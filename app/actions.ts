@@ -1,9 +1,10 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { createClient } from "@supabase/supabase-js";
+import { extractResumeScan } from "@/lib/resumeScan";
 import { getCheckinTime } from "@/lib/checkinTime";
-import { verifyScan } from "@/lib/scanReceipt";
+import { signScan, verifyScan } from "@/lib/scanReceipt";
 
 export async function submitCheckinServer(data: {
   firstName: string;
@@ -12,6 +13,11 @@ export async function submitCheckinServer(data: {
   university: string;
   major: string;
 }, formData: FormData) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return { success: false, error: "Check-in is unavailable. Configure the Supabase environment variables in Netlify and redeploy." };
+  const supabaseAdmin = createClient(url, key);
+
   const firstName = data.firstName.trim();
   const lastName = data.lastName.trim();
   const email = data.email.trim();
@@ -124,4 +130,19 @@ export async function submitCheckinServer(data: {
   }
 
   return { success: true };
+}
+
+
+export async function scanResumeServer(formData: FormData) {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key) return { success: false as const, error: "Scanning is unavailable. Configure the Supabase environment variables in Netlify and redeploy." };
+  const photo = formData.get("photo");
+  if (!(photo instanceof File)) return { success: false as const, error: "Scan a resume photo first." };
+  try {
+    const result = await extractResumeScan(photo);
+    const proof = signScan(result.pdf, key);
+    return { success: true as const, pdf: result.pdf.toString("base64"), text: result.text, confidence: result.confidence, proof };
+  } catch (error) {
+    return { success: false as const, error: error instanceof Error ? error.message : "Text extraction failed. Please retake the photo." };
+  }
 }

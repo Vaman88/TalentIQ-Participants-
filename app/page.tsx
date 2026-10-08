@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { ChevronRight } from "lucide-react";
+import { startTransition, useCallback, useEffect, useRef, useState } from "react";
+import { Camera, CheckCircle2, ChevronRight, FileText, Loader2, UploadCloud, X } from "lucide-react";
+import Image from "next/image";
+import { useDropzone } from "react-dropzone";
 import Link from "next/link";
-import { ResumeInput, type ResumeSelection } from "@/components/resume-input";
-import { submitCheckinServer } from "./actions";
+import { submitCheckinServer, scanResumeServer } from "./actions";
 
 const universitySuggestions = [
   "Arkansas State University",
@@ -211,8 +211,262 @@ function SuggestionField({
   );
 }
 
+
+type ResumeSelection = { file: File; source: "upload" | "scan"; proof?: string };
+
+function ResumeInput({ disabled, onChange }: { disabled: boolean; onChange: (resume: ResumeSelection | null) => void }) {
+  const [mode, setMode] = useState<"upload" | "scan">("upload");
+  const [selection, setSelection] = useState<ResumeSelection | null>(null);
+  const [warning, setWarning] = useState("");
+  const [scanning, setScanning] = useState(false);
+  const [openingCamera, setOpeningCamera] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState("");
+  const [text, setText] = useState("");
+  const video = useRef<HTMLVideoElement>(null);
+  const liveStream = useRef<MediaStream | null>(null);
+  const request = useRef(0);
+  const busy = disabled || scanning || openingCamera;
+
+  const stopCamera = useCallback(() => {
+    liveStream.current?.getTracks().forEach(track => track.stop());
+    liveStream.current = null;
+    setStream(null);
+    setCameraReady(false);
+  }, []);
+
+  useEffect(() => () => {
+    request.current++;
+    liveStream.current?.getTracks().forEach(track => track.stop());
+  }, []);
+  useEffect(() => {
+    if (video.current && stream) video.current.srcObject = stream;
+  }, [stream]);
+  useEffect(() => () => { if (photoUrl) URL.revokeObjectURL(photoUrl); }, [photoUrl]);
+
+  const reset = () => {
+    request.current++;
+    stopCamera();
+    setSelection(null);
+    onChange(null);
+    setWarning("");
+    setText("");
+    setPhotoUrl("");
+  };
+
+  const onDrop = useCallback((files: File[]) => {
+    if (!files[0]) return;
+    const next: ResumeSelection = { file: files[0], source: "upload" };
+    setSelection(next);
+    setWarning("");
+    onChange(next);
+  }, [onChange]);
+  const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
+    onDrop,
+    onDropRejected: () => {
+      setSelection(null);
+      onChange(null);
+      setWarning("Resume must be a PDF or DOCX file no larger than 8 MB.");
+    },
+    accept: { "application/pdf": [".pdf"], "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"] },
+    maxFiles: 1,
+    maxSize: 8 * 1024 * 1024,
+    noClick: true,
+    noKeyboard: true,
+    disabled: busy,
+  });
+
+  const scan = (photo: File) => {
+    stopCamera();
+    setSelection(null);
+    onChange(null);
+    setText("");
+    setWarning("");
+    setPhotoUrl("");
+    if (!["image/jpeg", "image/png"].includes(photo.type) || !photo.size || photo.size > 8 * 1024 * 1024) {
+      setWarning("The captured photo is too large. Retake the photo or upload a PDF or DOCX up to 8 MB.");
+      return;
+    }
+    setPhotoUrl(URL.createObjectURL(photo));
+    setScanning(true);
+    const current = ++request.current;
+    startTransition(async () => {
+      try {
+        const formData = new FormData();
+        formData.append("photo", photo);
+        const result = await scanResumeServer(formData);
+        if (request.current !== current) return;
+        if (!result.success) { setWarning(result.error); return; }
+        const bytes = Uint8Array.from(atob(result.pdf), character => character.charCodeAt(0));
+        const next: ResumeSelection = {
+          file: new File([bytes], "scanned-resume.pdf", { type: "application/pdf" }),
+          source: "scan", proof: result.proof,
+        };
+        setSelection(next);
+        setText(result.text);
+        onChange(next);
+      } catch {
+        if (request.current === current) setWarning("Text extraction failed. Check your connection, then retake the photo or upload your resume.");
+      } finally {
+        if (request.current === current) setScanning(false);
+      }
+    });
+  };
+
+  const openCamera = async () => {
+    reset();
+    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+      setWarning("Camera access requires HTTPS or localhost. Upload a PDF or DOCX instead.");
+      return;
+    }
+    setOpeningCamera(true);
+    const current = request.current;
+    try {
+      const next = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 2400 }, height: { ideal: 3200 } }, audio: false });
+      if (request.current !== current) { next.getTracks().forEach(track => track.stop()); return; }
+      liveStream.current = next;
+      setStream(next);
+    } catch {
+      if (request.current === current) setWarning("Camera access was denied or no camera is available. Allow camera access and try Scan resume again, or upload your resume.");
+    } finally {
+      if (request.current === current) setOpeningCamera(false);
+    }
+  };
+
+  const capture = async () => {
+    if (!video.current || !cameraReady) return;
+    const current = request.current;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.current.videoWidth;
+    canvas.height = video.current.videoHeight;
+    const context = canvas.getContext("2d");
+    if (!context || !canvas.width || !canvas.height) { setWarning("The camera is not ready. Please try again."); return; }
+    context.drawImage(video.current, 0, 0);
+    const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, "image/jpeg", 0.95));
+    if (request.current !== current || !liveStream.current) return;
+    if (!blob) { setWarning("The photo could not be captured. Please try again."); return; }
+    scan(new File([blob], "resume-photo.jpg", { type: "image/jpeg" }));
+  };
+
+  const buttonClass = "inline-flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-sm border border-jbh-black px-3 py-3 text-xs min-[400px]:text-sm sm:text-sm font-bold touch-manipulation [&>svg]:shrink-0 disabled:cursor-not-allowed disabled:opacity-50";
+
+  return (
+    <fieldset className="min-w-0 pt-4" disabled={disabled}>
+      <legend className="mb-2 w-full text-xs font-bold uppercase tracking-wide">Resume <span className="float-right normal-case">Required</span></legend>
+      <input {...getInputProps()} />
+      <div className="mb-3 grid grid-cols-1 min-[360px]:grid-cols-2 gap-2" role="group" aria-label="Resume method">
+        {(["upload", "scan"] as const).map(value => (
+          <button key={value} type="button" aria-pressed={mode === value} disabled={busy} onClick={() => {
+            setMode(value);
+            if (value === "scan") void openCamera();
+            else { reset(); open(); }
+          }} className={`${buttonClass} ${mode === value ? "bg-jbh-black text-white" : "bg-white text-jbh-black"}`}>
+            {value === "upload" ? <UploadCloud size={18} /> : <Camera size={18} />}
+            {value === "upload" ? "Upload resume" : "Scan resume"}
+          </button>
+        ))}
+      </div>
+
+      {mode === "upload" && !selection && (
+        <div {...getRootProps()} aria-label="Upload PDF or DOCX resume" className={`rounded-sm border-2 border-dashed p-4 text-center ${isDragActive ? "border-jbh-black bg-jbh-yellow/10" : "border-[#A0A0A0] bg-[#f9f9f9]"}`}>
+          <p className="text-sm">{isDragActive ? "Drop your resume here" : "Upload a PDF or DOCX, or drag it here."}</p>
+          <p className="mt-1 text-xs text-jbh-black/70">Up to 8 MB.</p>
+        </div>
+      )}
+
+      {mode === "scan" && (
+        <div className="space-y-3 rounded-sm border border-jbh-gray bg-[#f9f9f9] p-4">
+          <p className="text-sm leading-relaxed">Fit the whole page in the frame. Use good lighting and avoid glare.</p>
+          <p className="text-xs text-jbh-black/70">One English page. Submission requires readable text.</p>
+          {stream && (
+            <div className="space-y-2">
+              <video ref={video} autoPlay muted playsInline onLoadedData={() => setCameraReady(true)} className="max-h-[50dvh] sm:max-h-96 w-full rounded-sm bg-black object-contain" aria-label="Resume camera preview" />
+              <div className="flex gap-2">
+                <button type="button" onClick={capture} disabled={busy || !cameraReady} className={`${buttonClass} flex-1 bg-jbh-yellow`}><Camera size={18} /> Capture page</button>
+                <button type="button" onClick={stopCamera} disabled={busy} className={buttonClass}>Cancel</button>
+              </div>
+            </div>
+          )}
+          {photoUrl && <Image src={photoUrl} alt="Captured resume page" width={600} height={800} unoptimized className="max-h-72 w-full rounded-sm object-contain" />}
+          {!stream && photoUrl && (
+            <div>
+              <button type="button" onClick={openCamera} disabled={busy} className={`${buttonClass} bg-jbh-yellow`}>
+                <Camera size={18} /> Retake photo
+              </button>
+            </div>
+          )}
+          {openingCamera && <p role="status" className="flex items-center gap-2 text-sm"><Loader2 size={18} className="animate-spin" /> Opening camera…</p>}
+          {scanning && <p role="status" className="flex items-center gap-2 text-sm font-semibold"><Loader2 size={18} className="animate-spin" /> Checking photo and extracting text…</p>}
+          {text && (
+            <div className="space-y-2">
+              <p role="status" className="flex items-center gap-2 text-sm font-semibold text-green-800"><CheckCircle2 size={18} /> Text extracted. Your searchable PDF is ready.</p>
+              <details className="text-sm">
+                <summary className="cursor-pointer font-semibold">Review extracted text</summary>
+                <p className="mt-2 text-xs text-jbh-black/70">Check names and contact details. If text is missing or incorrect, retake the photo or upload your original resume.</p>
+                <pre className="mt-2 max-h-52 overflow-auto whitespace-pre-wrap break-words rounded-sm border border-jbh-gray bg-white p-3 font-sans text-xs">{text}</pre>
+              </details>
+            </div>
+          )}
+        </div>
+      )}
+
+      {selection && (
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-sm border-2 border-jbh-black bg-jbh-yellow/5 p-3">
+          <FileText size={22} className="shrink-0" />
+          <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{selection.file.name}</p><p className="text-xs text-jbh-black/70">{(selection.file.size / 1024 / 1024).toFixed(1)} MB</p></div>
+          <button type="button" aria-label="Remove resume" onClick={reset} disabled={busy} className="flex min-h-11 min-w-11 items-center justify-center p-2 touch-manipulation"><X size={18} /></button>
+        </div>
+      )}
+      {warning && <p role="alert" className="mt-3 rounded-sm border border-amber-400 bg-amber-50 p-3 text-sm font-medium text-amber-950">{warning}{mode === "scan" && !selection && " Submission is blocked until a scan passes or you upload a resume."}</p>}
+    </fieldset>
+  );
+}
+
+
+function SuccessScreen({ onReturn }: { onReturn: () => void }) {
+
+
+  return (
+    <div className="min-h-dvh bg-jbh-lightgray font-sans flex flex-col">
+
+      {/* Top Nav */}
+      <nav className="w-full bg-white z-50 flex items-center justify-start px-4 sm:px-6 py-3 sm:py-4 shadow-sm border-b-4 border-jbh-yellow">
+        <Link href="/" className="bg-jbh-yellow text-jbh-black font-heading font-extrabold px-3 py-1 text-base sm:text-xl tracking-tighter">
+          TalentIQ
+        </Link>
+      </nav>
+
+      {/* Main Area */}
+      <div className="flex-1 flex items-start sm:items-center justify-center p-0 sm:p-8 mt-6 sm:mt-0">
+        <div className="w-full max-w-2xl bg-white sm:border-t-8 border-t-4 border-jbh-yellow shadow-none sm:shadow-2xl ring-0 sm:ring-1 sm:ring-black/5 px-6 py-8 sm:p-24 flex flex-col items-center text-center rounded-none sm:rounded-md">
+
+          <div className="mb-6 sm:mb-12">
+            <CheckCircle2 strokeWidth={2} className="w-16 h-16 sm:w-24 sm:h-24 text-jbh-yellow" />
+          </div>
+
+          <h1 className="font-heading text-3xl sm:text-5xl font-extrabold uppercase text-jbh-black tracking-tight mb-4 sm:mb-8">
+            Check-In Complete
+          </h1>
+
+          <p className="text-base sm:text-xl text-jbh-black/50 leading-relaxed mb-8 sm:mb-20 max-w-lg">
+            You are officially registered. Your information has been securely transmitted to our recruitment team.
+          </p>
+
+          <button
+            onClick={onReturn}
+            className="w-full max-w-sm bg-jbh-black text-white uppercase text-sm sm:text-base font-extrabold px-8 py-4 sm:py-5 rounded-sm hover:bg-jbh-black/90 hover:tracking-wide transition-all flex items-center justify-center gap-2 group shadow-md active:scale-[0.98]"
+          >
+            Return to Home <ChevronRight strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function CheckinPage() {
-  const router = useRouter();
+
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -253,16 +507,18 @@ export default function CheckinPage() {
       }
 
       setStatus("success");
-      setTimeout(() => router.push("/success"), 800);
+
     } catch (error) {
       setStatus("error");
       setErrorMessage(error instanceof Error ? error.message : "An error occurred during submission.");
     }
   };
 
+  if (status === "success") return <SuccessScreen onReturn={() => window.location.reload()} />;
+
   return (
     <div className="min-h-dvh bg-jbh-lightgray font-sans flex flex-col">
-      
+
       {/* Top Nav (Corporate style) */}
       <nav className="w-full bg-white z-50 flex items-center justify-start px-4 sm:px-6 py-3 sm:py-4 shadow-sm border-b-4 border-jbh-yellow">
         <Link href="/" className="bg-jbh-yellow text-jbh-black font-heading font-extrabold px-3 py-1 text-lg sm:text-xl tracking-tighter">
@@ -273,7 +529,7 @@ export default function CheckinPage() {
       {/* Main Form Area */}
       <div className="flex-1 flex items-start sm:items-center justify-center p-0 sm:p-6 lg:p-8">
         <div className="w-full min-w-0 max-w-4xl bg-white border-x-0 sm:border border-jbh-gray shadow-none sm:shadow-xl flex flex-col md:flex-row overflow-hidden rounded-none sm:rounded-md">
-          
+
           {/* Side Banner */}
           <div className="bg-jbh-black text-white p-5 sm:p-10 md:p-12 md:w-2/5 flex flex-col justify-start text-center md:text-left">
             <div>
@@ -300,7 +556,7 @@ export default function CheckinPage() {
                     autoComplete="given-name"
                     value={firstName}
                     onChange={e => setFirstName(e.target.value)}
-                    disabled={status === "submitting" || status === "success"}
+                    disabled={status === "submitting"}
                     required
                     className="w-full bg-[#f9f9f9] border border-[#A0A0A0] rounded-sm px-4 py-3 sm:py-3.5 text-base sm:text-sm text-jbh-black placeholder:text-jbh-black/50 focus:outline-none focus:border-jbh-black focus:ring-1 focus:ring-jbh-black transition-all peer"
                   />
@@ -312,7 +568,7 @@ export default function CheckinPage() {
                     autoComplete="family-name"
                     value={lastName}
                     onChange={e => setLastName(e.target.value)}
-                    disabled={status === "submitting" || status === "success"}
+                    disabled={status === "submitting"}
                     required
                     className="w-full bg-[#f9f9f9] border border-[#A0A0A0] rounded-sm px-4 py-3 sm:py-3.5 text-base sm:text-sm text-jbh-black placeholder:text-jbh-black/50 focus:outline-none focus:border-jbh-black focus:ring-1 focus:ring-jbh-black transition-all peer"
                   />
@@ -330,18 +586,18 @@ export default function CheckinPage() {
                   spellCheck={false}
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  disabled={status === "submitting" || status === "success"}
+                  disabled={status === "submitting"}
                   required
                   className="w-full bg-[#f9f9f9] border border-[#A0A0A0] rounded-sm px-4 py-3 sm:py-3.5 text-base sm:text-sm text-jbh-black placeholder:text-jbh-black/50 focus:outline-none focus:border-jbh-black focus:ring-1 focus:ring-jbh-black transition-all peer"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                <SuggestionField id="university" label="University" value={university} onChange={setUniversity} options={universitySuggestions} aliases={universityAliases} placeholder="Enter your university" disabled={status === "submitting" || status === "success"} />
-                <SuggestionField id="major" label="Major" value={major} onChange={setMajor} options={majorSuggestions} placeholder="Enter your major" disabled={status === "submitting" || status === "success"} />
+                <SuggestionField id="university" label="University" value={university} onChange={setUniversity} options={universitySuggestions} aliases={universityAliases} placeholder="Enter your university" disabled={status === "submitting"} />
+                <SuggestionField id="major" label="Major" value={major} onChange={setMajor} options={majorSuggestions} placeholder="Enter your major" disabled={status === "submitting"} />
               </div>
 
-              <ResumeInput disabled={status === "submitting" || status === "success"} onChange={setResume} />
+              <ResumeInput disabled={status === "submitting"} onChange={setResume} />
 
               {status === "error" && (
                 <div role="alert" className="text-red-500 text-sm font-medium mt-2">
@@ -353,7 +609,7 @@ export default function CheckinPage() {
               <div className="pt-4 sm:pt-10 pb-2 sm:pb-0">
                 <button
                   type="submit"
-                  disabled={!resume || status === "submitting" || status === "success"}
+                  disabled={!resume || status === "submitting"}
                   className="w-full bg-jbh-yellow text-jbh-black uppercase text-base font-extrabold px-8 py-4 rounded-sm hover:bg-jbh-black hover:text-jbh-yellow hover:tracking-wide transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed group/btn shadow-md active:scale-[0.98]"
                 >
                   {status === "submitting" ? (
@@ -364,8 +620,6 @@ export default function CheckinPage() {
                       </svg>
                       Processing...
                     </>
-                  ) : status === "success" ? (
-                    "Success!"
                   ) : (
                     <>Submit <ChevronRight strokeWidth={2.5} className="w-5 h-5 group-hover/btn:translate-x-1 transition-transform" /></>
                   )}

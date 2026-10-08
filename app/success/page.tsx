@@ -8,28 +8,28 @@ export default function SuccessPage() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-jbh-lightgray font-sans flex flex-col">
+    <div className="min-h-dvh bg-jbh-lightgray font-sans flex flex-col">
       
       {/* Top Nav */}
       <nav className="w-full bg-white z-50 flex items-center justify-start px-4 sm:px-6 py-3 sm:py-4 shadow-sm border-b-4 border-jbh-yellow">
-        <Link href="/" className="bg-jbh-yellow text-jbh-black font-heading font-extrabold px-3 py-1 text-lg sm:text-xl tracking-tighter uppercase">
-          Career Fair
+        <Link href="/" className="bg-jbh-yellow text-jbh-black font-heading font-extrabold px-3 py-1 text-base sm:text-xl tracking-tighter">
+          TalentIQ
         </Link>
       </nav>
 
       {/* Main Area */}
       <div className="flex-1 flex items-start sm:items-center justify-center p-0 sm:p-8 mt-6 sm:mt-0">
-        <div className="w-full max-w-2xl bg-white sm:border-t-8 border-t-4 border-jbh-yellow shadow-none sm:shadow-2xl ring-0 sm:ring-1 sm:ring-black/5 p-12 sm:p-24 flex flex-col items-center text-center rounded-none sm:rounded-md">
+        <div className="w-full max-w-2xl bg-white sm:border-t-8 border-t-4 border-jbh-yellow shadow-none sm:shadow-2xl ring-0 sm:ring-1 sm:ring-black/5 px-6 py-8 sm:p-24 flex flex-col items-center text-center rounded-none sm:rounded-md">
           
-          <div className="mb-10 sm:mb-12">
-            <CheckCircle2 strokeWidth={2} className="w-20 h-20 sm:w-24 sm:h-24 text-jbh-yellow" />
+          <div className="mb-6 sm:mb-12">
+            <CheckCircle2 strokeWidth={2} className="w-16 h-16 sm:w-24 sm:h-24 text-jbh-yellow" />
           </div>
 
-          <h1 className="font-heading text-4xl sm:text-5xl font-extrabold uppercase text-jbh-black tracking-tight mb-6 sm:mb-8">
+          <h1 className="font-heading text-3xl sm:text-5xl font-extrabold uppercase text-jbh-black tracking-tight mb-4 sm:mb-8">
             Check-In Complete
           </h1>
           
-          <p className="text-lg sm:text-xl text-jbh-black/50 leading-relaxed mb-16 sm:mb-20 max-w-lg">
+          <p className="text-base sm:text-xl text-jbh-black/50 leading-relaxed mb-8 sm:mb-20 max-w-lg">
             You are officially registered. Your information has been securely transmitted to our recruitment team.
           </p>
 

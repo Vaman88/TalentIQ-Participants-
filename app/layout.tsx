@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Montserrat, Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -20,6 +20,13 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "TalentIQ Career Fair",
   description: "Check in to the career fair.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#FEDB00",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

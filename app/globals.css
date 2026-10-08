@@ -70,6 +70,9 @@
   
   body {
     @apply bg-background text-foreground antialiased selection:bg-jbh-yellow selection:text-jbh-black;
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
   }
 
   h1, h2, h3, h4, h5, h6 {

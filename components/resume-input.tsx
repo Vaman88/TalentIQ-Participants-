@@ -143,13 +143,13 @@ export function ResumeInput({ disabled, onChange }: { disabled: boolean; onChang
     scan(new File([blob], "resume-photo.jpg", { type: "image/jpeg" }));
   };
 
-  const buttonClass = "inline-flex items-center justify-center gap-2 rounded-sm border border-jbh-black px-4 py-3 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-50";
+  const buttonClass = "inline-flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-sm border border-jbh-black px-3 py-3 text-xs min-[400px]:text-sm sm:text-sm font-bold touch-manipulation [&>svg]:shrink-0 disabled:cursor-not-allowed disabled:opacity-50";
 
   return (
     <fieldset className="min-w-0 pt-4" disabled={disabled}>
       <legend className="mb-2 w-full text-xs font-bold uppercase tracking-wide">Resume <span className="float-right normal-case">Required</span></legend>
       <input {...getInputProps()} />
-      <div className="mb-3 grid grid-cols-2 gap-2" role="group" aria-label="Resume method">
+      <div className="mb-3 grid grid-cols-1 min-[360px]:grid-cols-2 gap-2" role="group" aria-label="Resume method">
         {(["upload", "scan"] as const).map(value => (
           <button key={value} type="button" aria-pressed={mode === value} disabled={busy} onClick={() => {
             setMode(value);
@@ -175,7 +175,7 @@ export function ResumeInput({ disabled, onChange }: { disabled: boolean; onChang
           <p className="text-xs text-jbh-black/70">One English page. Submission requires readable text.</p>
           {stream && (
             <div className="space-y-2">
-              <video ref={video} autoPlay muted playsInline onLoadedData={() => setCameraReady(true)} className="max-h-96 w-full rounded-sm bg-black object-contain" aria-label="Resume camera preview" />
+              <video ref={video} autoPlay muted playsInline onLoadedData={() => setCameraReady(true)} className="max-h-[50dvh] sm:max-h-96 w-full rounded-sm bg-black object-contain" aria-label="Resume camera preview" />
               <div className="flex gap-2">
                 <button type="button" onClick={capture} disabled={busy || !cameraReady} className={`${buttonClass} flex-1 bg-jbh-yellow`}><Camera size={18} /> Capture page</button>
                 <button type="button" onClick={stopCamera} disabled={busy} className={buttonClass}>Cancel</button>
@@ -209,7 +209,7 @@ export function ResumeInput({ disabled, onChange }: { disabled: boolean; onChang
         <div className="mt-3 flex items-center justify-between gap-3 rounded-sm border-2 border-jbh-black bg-jbh-yellow/5 p-3">
           <FileText size={22} className="shrink-0" />
           <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{selection.file.name}</p><p className="text-xs text-jbh-black/70">{(selection.file.size / 1024 / 1024).toFixed(1)} MB</p></div>
-          <button type="button" aria-label="Remove resume" onClick={reset} disabled={busy} className="p-2"><X size={18} /></button>
+          <button type="button" aria-label="Remove resume" onClick={reset} disabled={busy} className="flex min-h-11 min-w-11 items-center justify-center p-2 touch-manipulation"><X size={18} /></button>
         </div>
       )}
       {warning && <p role="alert" className="mt-3 rounded-sm border border-amber-400 bg-amber-50 p-3 text-sm font-medium text-amber-950">{warning}{mode === "scan" && !selection && " Submission is blocked until a scan passes or you upload a resume."}</p>}

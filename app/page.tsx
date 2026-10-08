@@ -187,7 +187,7 @@ function SuggestionField({
         aria-controls={listId}
         aria-activedescendant={showSuggestions && activeIndex >= 0 ? `${id}-option-${activeIndex}` : undefined}
         placeholder={placeholder}
-        className="w-full bg-[#f9f9f9] border border-[#A0A0A0] rounded-sm px-4 py-3 sm:py-3.5 text-base sm:text-sm text-jbh-black placeholder:text-jbh-gray focus:outline-none focus:border-jbh-black focus:ring-1 focus:ring-jbh-black transition-all peer"
+        className="w-full bg-[#f9f9f9] border border-[#A0A0A0] rounded-sm px-4 py-3 sm:py-3.5 text-base sm:text-sm text-jbh-black placeholder:text-jbh-black/50 focus:outline-none focus:border-jbh-black focus:ring-1 focus:ring-jbh-black transition-all peer"
       />
       {showSuggestions && (
         <div id={listId} role="listbox" aria-label={`${label} suggestions`} className="mt-1 max-h-52 overflow-y-auto rounded-sm border-l-4 border-jbh-yellow bg-jbh-black py-1">
@@ -261,27 +261,27 @@ export default function CheckinPage() {
   };
 
   return (
-    <div className="min-h-screen bg-jbh-lightgray font-sans flex flex-col">
+    <div className="min-h-dvh bg-jbh-lightgray font-sans flex flex-col">
       
       {/* Top Nav (Corporate style) */}
       <nav className="w-full bg-white z-50 flex items-center justify-start px-4 sm:px-6 py-3 sm:py-4 shadow-sm border-b-4 border-jbh-yellow">
-        <Link href="/" className="bg-jbh-yellow text-jbh-black font-heading font-extrabold px-3 py-1 text-lg sm:text-xl tracking-tighter uppercase">
-          Career Fair
+        <Link href="/" className="bg-jbh-yellow text-jbh-black font-heading font-extrabold px-3 py-1 text-lg sm:text-xl tracking-tighter">
+          TalentIQ
         </Link>
       </nav>
 
       {/* Main Form Area */}
       <div className="flex-1 flex items-start sm:items-center justify-center p-0 sm:p-6 lg:p-8">
-        <div className="w-full max-w-4xl bg-white border-x-0 sm:border border-jbh-gray shadow-none sm:shadow-xl flex flex-col md:flex-row overflow-hidden rounded-none sm:rounded-md">
+        <div className="w-full min-w-0 max-w-4xl bg-white border-x-0 sm:border border-jbh-gray shadow-none sm:shadow-xl flex flex-col md:flex-row overflow-hidden rounded-none sm:rounded-md">
           
           {/* Side Banner */}
-          <div className="bg-jbh-black text-white p-8 sm:p-10 md:p-12 md:w-2/5 flex flex-col justify-start text-center md:text-left">
+          <div className="bg-jbh-black text-white p-5 sm:p-10 md:p-12 md:w-2/5 flex flex-col justify-start text-center md:text-left">
             <div>
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-heading font-extrabold uppercase mb-4 sm:mb-6 leading-none tracking-tight">
+              <h2 className="text-2xl sm:text-4xl md:text-5xl font-heading font-extrabold uppercase mb-3 sm:mb-6 leading-none tracking-tight">
                 Join the <br className="hidden md:block" />
                 <span className="text-jbh-yellow"> Fleet.</span>
               </h2>
-              <div className="w-12 sm:w-16 h-1.5 bg-jbh-yellow mb-6 sm:mb-8 mx-auto md:mx-0"></div>
+              <div className="w-12 sm:w-16 h-1.5 bg-jbh-yellow mb-3 sm:mb-8 mx-auto md:mx-0"></div>
               <p className="text-sm sm:text-base text-jbh-lightgray/90 font-medium leading-relaxed max-w-sm mx-auto md:mx-0">
                 Provide your details to securely check in. Our recruiters will review your information shortly.
               </p>
@@ -289,45 +289,54 @@ export default function CheckinPage() {
           </div>
 
           {/* Form */}
-          <div className="p-8 sm:p-10 md:p-12 md:w-3/5 overflow-y-auto">
+          <div className="min-w-0 p-5 sm:p-10 md:p-12 md:w-3/5">
             {/* Added -mt-2 to pull the form UP slightly to perfectly align with the text ascenders of the heading on the left */}
-            <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6 -mt-2">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
-                <div className="flex flex-col relative group">
-                  <label className="text-[11px] sm:text-xs font-bold text-jbh-black uppercase tracking-wide mb-1 group-focus-within:text-jbh-black transition-colors">First Name</label>
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 sm:-mt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                <div className="flex min-w-0 flex-col relative group">
+                  <label className="text-[11px] sm:text-xs font-bold text-jbh-black uppercase tracking-wide mb-1 group-focus-within:text-jbh-black transition-colors" htmlFor="first-name">First Name</label>
                   <input
+                    id="first-name"
+                    autoComplete="given-name"
                     value={firstName}
                     onChange={e => setFirstName(e.target.value)}
                     disabled={status === "submitting" || status === "success"}
                     required
-                    className="w-full bg-[#f9f9f9] border border-[#A0A0A0] rounded-sm px-4 py-3 sm:py-3.5 text-base sm:text-sm text-jbh-black placeholder:text-jbh-gray focus:outline-none focus:border-jbh-black focus:ring-1 focus:ring-jbh-black transition-all peer"
+                    className="w-full bg-[#f9f9f9] border border-[#A0A0A0] rounded-sm px-4 py-3 sm:py-3.5 text-base sm:text-sm text-jbh-black placeholder:text-jbh-black/50 focus:outline-none focus:border-jbh-black focus:ring-1 focus:ring-jbh-black transition-all peer"
                   />
                 </div>
-                <div className="flex flex-col relative group">
-                  <label className="text-[11px] sm:text-xs font-bold text-jbh-black uppercase tracking-wide mb-1 group-focus-within:text-jbh-black transition-colors">Last Name</label>
+                <div className="flex min-w-0 flex-col relative group">
+                  <label className="text-[11px] sm:text-xs font-bold text-jbh-black uppercase tracking-wide mb-1 group-focus-within:text-jbh-black transition-colors" htmlFor="last-name">Last Name</label>
                   <input
+                    id="last-name"
+                    autoComplete="family-name"
                     value={lastName}
                     onChange={e => setLastName(e.target.value)}
                     disabled={status === "submitting" || status === "success"}
                     required
-                    className="w-full bg-[#f9f9f9] border border-[#A0A0A0] rounded-sm px-4 py-3 sm:py-3.5 text-base sm:text-sm text-jbh-black placeholder:text-jbh-gray focus:outline-none focus:border-jbh-black focus:ring-1 focus:ring-jbh-black transition-all peer"
+                    className="w-full bg-[#f9f9f9] border border-[#A0A0A0] rounded-sm px-4 py-3 sm:py-3.5 text-base sm:text-sm text-jbh-black placeholder:text-jbh-black/50 focus:outline-none focus:border-jbh-black focus:ring-1 focus:ring-jbh-black transition-all peer"
                   />
                 </div>
               </div>
 
-              <div className="flex flex-col relative group">
-                <label className="text-[11px] sm:text-xs font-bold text-jbh-black uppercase tracking-wide mb-1 group-focus-within:text-jbh-black transition-colors">Email Address</label>
+              <div className="flex min-w-0 flex-col relative group">
+                <label className="text-[11px] sm:text-xs font-bold text-jbh-black uppercase tracking-wide mb-1 group-focus-within:text-jbh-black transition-colors" htmlFor="email">Email Address</label>
                 <input
+                  id="email"
                   type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  autoCapitalize="none"
+                  spellCheck={false}
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   disabled={status === "submitting" || status === "success"}
                   required
-                  className="w-full bg-[#f9f9f9] border border-[#A0A0A0] rounded-sm px-4 py-3 sm:py-3.5 text-base sm:text-sm text-jbh-black placeholder:text-jbh-gray focus:outline-none focus:border-jbh-black focus:ring-1 focus:ring-jbh-black transition-all peer"
+                  className="w-full bg-[#f9f9f9] border border-[#A0A0A0] rounded-sm px-4 py-3 sm:py-3.5 text-base sm:text-sm text-jbh-black placeholder:text-jbh-black/50 focus:outline-none focus:border-jbh-black focus:ring-1 focus:ring-jbh-black transition-all peer"
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <SuggestionField id="university" label="University" value={university} onChange={setUniversity} options={universitySuggestions} aliases={universityAliases} placeholder="Enter your university" disabled={status === "submitting" || status === "success"} />
                 <SuggestionField id="major" label="Major" value={major} onChange={setMajor} options={majorSuggestions} placeholder="Enter your major" disabled={status === "submitting" || status === "success"} />
               </div>
@@ -341,7 +350,7 @@ export default function CheckinPage() {
               )}
 
               {/* Added pt-10 to increase breathing room above the submit button */}
-              <div className="pt-10 pb-2 sm:pb-0">
+              <div className="pt-4 sm:pt-10 pb-2 sm:pb-0">
                 <button
                   type="submit"
                   disabled={!resume || status === "submitting" || status === "success"}

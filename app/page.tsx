@@ -110,10 +110,11 @@ function SuggestionField({
 }) {
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const optionTouch = useRef<{ id: number; x: number; y: number } | null>(null);
   const query = value.trim().toLowerCase();
   const searchRank = (option: string) => {
     const name = option.toLowerCase();
-    if (name === query) return Infinity;
+    if (name === query) return 0;
 
     const initials = aliases
       ? option.match(/[a-z]+/gi)?.filter(word => !["of", "at", "the", "and"].includes(word.toLowerCase())).map(word => word[0]).join("").toLowerCase()
@@ -131,7 +132,7 @@ function SuggestionField({
         .sort((a, b) => a.rank - b.rank || a.option.localeCompare(b.option))
         .slice(0, 6)
         .map(result => result.option)
-    : [];
+    : options;
   const showSuggestions = open && !disabled && matches.length > 0;
   const listId = `${id}-suggestions`;
 
@@ -181,6 +182,8 @@ function SuggestionField({
         disabled={disabled}
         required
         autoComplete="off"
+        autoCorrect="off"
+        spellCheck={false}
         role="combobox"
         aria-autocomplete="list"
         aria-expanded={showSuggestions}
@@ -197,10 +200,33 @@ function SuggestionField({
               key={option}
               type="button"
               role="option"
+              tabIndex={-1}
               aria-selected={activeIndex === index}
-              onMouseEnter={() => setActiveIndex(index)}
+              // Keep focus on the input until click selects the option. Mobile
+              // browsers can otherwise blur it and remove the list before click.
+              onPointerDown={event => {
+                event.preventDefault();
+                optionTouch.current = event.pointerType === "mouse" ? null : {
+                  id: event.pointerId, x: event.clientX, y: event.clientY,
+                };
+              }}
+              onPointerCancel={() => { optionTouch.current = null; }}
+              onPointerUp={event => {
+                const touch = optionTouch.current;
+                optionTouch.current = null;
+                // Safari may suppress click after a cancelled pointerdown.
+                // Select only a completed tap; scrolling cancels the pointer.
+                if (touch?.id === event.pointerId && Math.hypot(event.clientX - touch.x, event.clientY - touch.y) < 10) {
+                  event.preventDefault();
+                  chooseOption(option);
+                }
+              }}
+              onMouseDown={event => event.preventDefault()}
+              onPointerMove={event => {
+                if (event.pointerType === "mouse") setActiveIndex(index);
+              }}
               onClick={() => chooseOption(option)}
-              className={`block w-full px-4 py-2.5 text-left text-sm font-semibold transition-colors ${activeIndex === index ? "bg-jbh-yellow text-jbh-black" : "text-white hover:bg-jbh-yellow hover:text-jbh-black"}`}
+              className={`block min-h-11 w-full touch-manipulation px-4 py-2.5 text-left text-base sm:text-sm font-semibold transition-colors ${activeIndex === index ? "bg-jbh-yellow text-jbh-black" : "text-white hover:bg-jbh-yellow hover:text-jbh-black"}`}
             >
               {option}
             </button>

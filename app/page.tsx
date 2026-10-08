@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { UploadCloud, FileText, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { useDropzone } from "react-dropzone";
+import { ResumeInput, type ResumeSelection } from "@/components/resume-input";
 import { submitCheckinServer } from "./actions";
 
 const universitySuggestions = [
@@ -218,36 +218,15 @@ export default function CheckinPage() {
   const [email, setEmail] = useState("");
   const [university, setUniversity] = useState("");
   const [major, setMajor] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [resume, setResume] = useState<ResumeSelection | null>(null);
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    if (acceptedFiles && acceptedFiles[0]) {
-      setFile(acceptedFiles[0]);
-    }
-  }, []);
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    onDropRejected: () => {
-      setStatus("error");
-      setErrorMessage("Resume must be a PDF or DOCX file no larger than 8 MB.");
-    },
-    accept: {
-      'application/pdf': ['.pdf'],
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
-    },
-    maxFiles: 1,
-    maxSize: 8 * 1024 * 1024,
-    disabled: status === "submitting" || status === "success"
-  });
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file) {
+    if (!resume) {
       setStatus("error");
-      setErrorMessage("Please upload your resume before submitting.");
+      setErrorMessage("Please upload your resume or complete a readable scan before submitting.");
       return;
     }
     setStatus("submitting");
@@ -255,7 +234,9 @@ export default function CheckinPage() {
 
     try {
       const formData = new FormData();
-      formData.append("resume", file);
+      formData.append("resume", resume.file);
+      formData.append("resumeSource", resume.source);
+      if (resume.proof) formData.append("scanProof", resume.proof);
 
       const result = await submitCheckinServer({
         firstName,
@@ -283,12 +264,9 @@ export default function CheckinPage() {
     <div className="min-h-screen bg-jbh-lightgray font-sans flex flex-col">
       
       {/* Top Nav (Corporate style) */}
-      <nav className="w-full bg-white z-50 flex items-center justify-center sm:justify-start px-4 sm:px-6 py-3 sm:py-4 shadow-sm border-b-4 border-jbh-yellow">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="bg-jbh-yellow text-jbh-black font-heading font-extrabold italic px-2 sm:px-3 py-1 text-lg sm:text-xl tracking-tighter uppercase transform -skew-x-12">
-            J.B. HUNT
-          </div>
-          <span className="text-jbh-black font-heading font-bold tracking-tight text-base sm:text-lg ml-1 sm:ml-2 uppercase">Career Fair</span>
+      <nav className="w-full bg-white z-50 flex items-center justify-start px-4 sm:px-6 py-3 sm:py-4 shadow-sm border-b-4 border-jbh-yellow">
+        <Link href="/" className="bg-jbh-yellow text-jbh-black font-heading font-extrabold px-3 py-1 text-lg sm:text-xl tracking-tighter uppercase">
+          Career Fair
         </Link>
       </nav>
 
@@ -354,47 +332,10 @@ export default function CheckinPage() {
                 <SuggestionField id="major" label="Major" value={major} onChange={setMajor} options={majorSuggestions} placeholder="Enter your major" disabled={status === "submitting" || status === "success"} />
               </div>
 
-              <div className="flex flex-col relative group pt-4 sm:pt-6">
-                <label className="text-[11px] sm:text-xs font-bold text-jbh-black uppercase tracking-wide flex justify-between mb-1">
-                  Resume Upload
-                  <span className="text-jbh-black font-bold normal-case tracking-normal">Required</span>
-                </label>
-                
-                {!file ? (
-                  <div {...getRootProps()} className={`flex flex-col items-center justify-center border-2 border-dashed ${isDragActive ? 'border-jbh-black bg-[#efefef]' : 'border-[#A0A0A0] bg-[#f9f9f9]'} rounded-sm p-6 sm:p-8 hover:bg-[#efefef] hover:border-jbh-black transition-all cursor-pointer group/upload focus-within:ring-2 focus-within:ring-jbh-black focus-within:border-solid focus-within:border-jbh-black`}>
-                    <input {...getInputProps()} />
-                    <UploadCloud strokeWidth={2.5} className={`w-8 h-8 text-jbh-black mb-3 transition-all ${isDragActive ? 'scale-110 text-jbh-yellow' : 'group-hover/upload:scale-110 group-hover/upload:text-jbh-yellow'}`} />
-                    <span className={`inline-block bg-jbh-black text-white px-5 py-2 rounded-full text-xs font-bold mb-2 uppercase transition-colors ${isDragActive ? 'bg-jbh-yellow text-jbh-black' : 'group-hover/upload:bg-jbh-yellow group-hover/upload:text-jbh-black'}`}>
-                      {isDragActive ? "Drop File Here" : "Select File"}
-                    </span>
-                    <span className="text-xs font-medium text-jbh-black/60">PDF or DOCX, up to 8 MB. Drag & drop allowed.</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between p-3 sm:p-4 border-2 border-jbh-black bg-jbh-yellow/5 rounded-sm">
-                    <div className="flex items-center gap-3 sm:gap-4 overflow-hidden">
-                      <FileText strokeWidth={2.5} className="w-5 h-5 sm:w-6 sm:h-6 text-jbh-black shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-jbh-black truncate">{file.name}</p>
-                        <p className="text-[10px] sm:text-xs text-jbh-black/60 font-medium mt-0.5">
-                          {file.name.split('.').pop()?.toUpperCase()} • {(file.size / (1024 * 1024)).toFixed(1)} MB
-                        </p>
-                      </div>
-                    </div>
-                    {(status === "idle" || status === "error") && (
-                      <button 
-                        type="button" 
-                        onClick={() => setFile(null)}
-                        className="p-2 text-jbh-black/50 hover:text-jbh-black transition-colors font-bold"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
+              <ResumeInput disabled={status === "submitting" || status === "success"} onChange={setResume} />
 
               {status === "error" && (
-                <div className="text-red-500 text-sm font-medium mt-2">
+                <div role="alert" className="text-red-500 text-sm font-medium mt-2">
                   {errorMessage}
                 </div>
               )}
@@ -403,7 +344,7 @@ export default function CheckinPage() {
               <div className="pt-10 pb-2 sm:pb-0">
                 <button
                   type="submit"
-                  disabled={status === "submitting" || status === "success"}
+                  disabled={!resume || status === "submitting" || status === "success"}
                   className="w-full bg-jbh-yellow text-jbh-black uppercase text-base font-extrabold px-8 py-4 rounded-sm hover:bg-jbh-black hover:text-jbh-yellow hover:tracking-wide transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed group/btn shadow-md active:scale-[0.98]"
                 >
                   {status === "submitting" ? (

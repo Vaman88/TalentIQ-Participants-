@@ -3,6 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getCheckinTime } from "@/lib/checkinTime";
+import { verifyScan } from "@/lib/scanReceipt";
 
 export async function submitCheckinServer(data: {
   firstName: string;
@@ -26,6 +27,18 @@ export async function submitCheckinServer(data: {
   }
 
   const checkinTime = getCheckinTime();
+  const source = formData.get("resumeSource");
+  if (source !== null && source !== "upload" && source !== "scan") {
+    return { success: false, error: "Please select or scan your resume again." };
+  }
+  const scanProof = formData.get("scanProof");
+  if (source === "scan" || scanProof !== null) {
+    const scannedResume = formData.get("resume");
+    if (!(scannedResume instanceof File) || scannedResume.size > 8 * 1024 * 1024 || typeof scanProof !== "string" ||
+      !verifyScan(new Uint8Array(await scannedResume.arrayBuffer()), scanProof, process.env.SUPABASE_SERVICE_ROLE_KEY ?? "")) {
+      return { success: false, error: "This scan has not passed validation or has expired. Please scan your resume again." };
+    }
+  }
   const { error: schemaError } = await supabaseAdmin
     .from("responses")
     .select("university,major,checkin_time")
@@ -79,6 +92,7 @@ export async function submitCheckinServer(data: {
         initials: `${firstName[0]}${lastName[0]}`.toUpperCase(),
         checkin_time: checkinTime.central,
         checkin_time_utc: checkinTime.utc,
+        resume_source: source === "scan" ? "camera_scan" : "upload",
       },
       upsert: false,
     });

@@ -11,12 +11,9 @@ export default function SuccessPage() {
     <div className="min-h-screen bg-jbh-lightgray font-sans flex flex-col">
       
       {/* Top Nav */}
-      <nav className="w-full bg-white z-50 flex items-center justify-center sm:justify-start px-4 sm:px-6 py-3 sm:py-4 shadow-sm border-b-4 border-jbh-yellow">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="bg-jbh-yellow text-jbh-black font-heading font-extrabold italic px-2 sm:px-3 py-1 text-lg sm:text-xl tracking-tighter uppercase transform -skew-x-12">
-            J.B. HUNT
-          </div>
-          <span className="text-jbh-black font-heading font-bold tracking-tight text-base sm:text-lg ml-1 sm:ml-2 uppercase">Career Fair</span>
+      <nav className="w-full bg-white z-50 flex items-center justify-start px-4 sm:px-6 py-3 sm:py-4 shadow-sm border-b-4 border-jbh-yellow">
+        <Link href="/" className="bg-jbh-yellow text-jbh-black font-heading font-extrabold px-3 py-1 text-lg sm:text-xl tracking-tighter uppercase">
+          Career Fair
         </Link>
       </nav>
 

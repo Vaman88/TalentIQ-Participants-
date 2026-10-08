@@ -5,7 +5,7 @@ import { Camera, CheckCircle2, ChevronRight, FileText, Loader2, UploadCloud, X }
 import Image from "next/image";
 import { useDropzone } from "react-dropzone";
 import Link from "next/link";
-import { submitCheckinServer, scanResumeServer } from "./actions";
+import { scanResumeServer } from "./actions";
 
 const universitySuggestions = [
   "Arkansas State University",
@@ -212,7 +212,7 @@ function SuggestionField({
 }
 
 
-type ResumeSelection = { file: File; source: "upload" | "scan"; proof?: string };
+type ResumeSelection = { file: File; source: "upload" | "scan" };
 
 function ResumeInput({ disabled, onChange }: { disabled: boolean; onChange: (resume: ResumeSelection | null) => void }) {
   const [mode, setMode] = useState<"upload" | "scan">("upload");
@@ -301,7 +301,7 @@ function ResumeInput({ disabled, onChange }: { disabled: boolean; onChange: (res
         const bytes = Uint8Array.from(atob(result.pdf), character => character.charCodeAt(0));
         const next: ResumeSelection = {
           file: new File([bytes], "scanned-resume.pdf", { type: "application/pdf" }),
-          source: "scan", proof: result.proof,
+          source: "scan",
         };
         setSelection(next);
         setText(result.text);
@@ -450,7 +450,7 @@ function SuccessScreen({ onReturn }: { onReturn: () => void }) {
           </h1>
 
           <p className="text-base sm:text-xl text-jbh-black/50 leading-relaxed mb-8 sm:mb-20 max-w-lg">
-            You are officially registered. Your information has been securely transmitted to our recruitment team.
+            You have completed the form. Thank you for checking in.
           </p>
 
           <button
@@ -476,7 +476,7 @@ export default function CheckinPage() {
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!resume) {
       setStatus("error");
@@ -486,32 +486,12 @@ export default function CheckinPage() {
     setStatus("submitting");
     setErrorMessage("");
 
-    try {
-      const formData = new FormData();
-      formData.append("resume", resume.file);
-      formData.append("resumeSource", resume.source);
-      if (resume.proof) formData.append("scanProof", resume.proof);
-
-      const result = await submitCheckinServer({
-        firstName,
-        lastName,
-        email: email,
-        university: university,
-        major: major,
-      }, formData);
-
-      if (!result.success) {
-        setStatus("error");
-        setErrorMessage(result.error ?? "Could not save response. Please try again.");
-        return;
-      }
-
-      setStatus("success");
-
-    } catch (error) {
+    if (![firstName, lastName, email, university, major].every(value => value.trim())) {
       setStatus("error");
-      setErrorMessage(error instanceof Error ? error.message : "An error occurred during submission.");
+      setErrorMessage("Please complete all required fields.");
+      return;
     }
+    setStatus("success");
   };
 
   if (status === "success") return <SuccessScreen onReturn={() => window.location.reload()} />;
@@ -539,7 +519,7 @@ export default function CheckinPage() {
               </h2>
               <div className="w-12 sm:w-16 h-1.5 bg-jbh-yellow mb-3 sm:mb-8 mx-auto md:mx-0"></div>
               <p className="text-sm sm:text-base text-jbh-lightgray/90 font-medium leading-relaxed max-w-sm mx-auto md:mx-0">
-                Provide your details to securely check in. Our recruiters will review your information shortly.
+                Provide your details and resume to complete the career fair check-in form.
               </p>
             </div>
           </div>

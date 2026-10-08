@@ -1,38 +1,26 @@
 # TalentIQ participant check-in
 
-A mobile-friendly career fair form with university/major suggestions, PDF/DOCX uploads (8 MB), camera scanning, and a confirmation screen. Candidate details and resumes are saved to Supabase; timestamps are stored in UTC and displayed in Central Time.
+A mobile-friendly career fair form with university/major suggestions, PDF/DOCX selection (8 MB), camera scanning, and a completion screen.
 
-## Main files
+Submit validates the form and shows completion locally. Candidate details and resumes are not saved or sent to a database or recruiter. No Supabase connection or environment variables are required.
 
-- app/page.tsx: all website UI, including upload, camera, and confirmation.
-- app/actions.ts: server-side check-in and scan actions; secrets stay on the server.
-- lib/: OCR, readability checks, scan verification, and time formatting.
-- app/layout.tsx and app/globals.css: required page shell and styling.
-- netlify.toml: deployment settings.
+Camera scans still send a photo to this app's server for OCR. Unreadable scans show a warning and block submission. Successful scans produce a searchable PDF in memory; photos and PDFs are not persisted.
 
-## Run locally
+## Run
 
-1. Run npm ci.
-2. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local.
-3. Run npm run dev and open http://localhost:3000.
-
-Supabase needs a resumes storage bucket and the responses table. Apply the SQL files in supabase/migrations in filename order when setting up the database.
+Run npm ci, then npm run dev. Open http://localhost:3000.
 
 ## Netlify
 
-Connect https://github.com/Vaman88/TalentIQ-Participants-.git and use the master production branch. Deploy from Git, with the repository root as the base, npm run build as the build command, and .next as the publish directory. netlify.toml sets these values and Node 24. Netlify's automatic Next.js adapter runs the server actions.
+Connect the master branch of https://github.com/Vaman88/TalentIQ-Participants-.git. The root netlify.toml sets npm run build, .next, and Node 24. Use Netlify's Next.js runtime for camera OCR. No database credentials are needed.
 
-Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in Netlify with Builds and Functions scopes, then redeploy. Never commit .env.local or expose the service-role key in browser code.
+## Files
 
-## Resume scans
-
-Camera access requires HTTPS or localhost. Readable scans become searchable PDFs. Failed extraction, low resolution, poor contrast, or unreliable text show a warning and block submission. Scan proofs expire after 30 minutes; the user can review extracted text before submitting.
+- app/page.tsx: form, upload, camera, and completion UI.
+- app/actions.ts: OCR action only.
+- lib/resumeScan.ts and lib/scanValidation.ts: text extraction and readability checks.
+- app/layout.tsx and app/globals.css: page shell and styling.
 
 ## Checks
 
-- npm run build
-- npm run lint
-- npm test
-- npm run test:scan (actual OCR and image rejection checks)
-
-Presentation files remain local but are excluded from this website repository.
+Run npm run build, npm run lint, npm test, and npm run test:scan.

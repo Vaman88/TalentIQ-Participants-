@@ -45,7 +45,15 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-## Deploy on Vercel
+## Deploy on Netlify
+
+Connect this repository using the `master` production branch. The root `netlify.toml` sets the base directory to the repository root, build command to `npm run build`, publish directory to `.next`, and Node.js version to 24. Netlify automatically applies its Next.js adapter, which is required for the form's Server Actions. Deploy through the connected Git repository rather than uploading the source folder as a static site.
+
+Add `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in Netlify's environment variable settings, with **Builds and Functions** scopes. If using the browser Supabase client, also add `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Use the same project values as your local `.env.local`; that file is intentionally excluded from Git. Keep the service-role key server-only. Redeploy after adding or changing these variables.
+
+A Netlify-branded 404 at the homepage means the app is not being served by the Next.js deployment. Confirm the connected repository and branch, root base directory, `.next` publish directory, and a successful production deploy with the Next.js adapter enabled.
+
+## Vercel deployment
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
